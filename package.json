@@ -1,0 +1,21 @@
+{
+  "name": "netpascraper",
+  "version": "1.0.0",
+  "description": "Webscraper for netpa",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "tsc && node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "moekify",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^16.11.6",
+    "tslint": "^6.1.3",
+    "typescript": "^4.4.4"
+  },
+  "dependencies": {
+    "pretty": "^2.0.0",
+    "puppeteer": "^10.4.0"
+  }
+}
