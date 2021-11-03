@@ -17,7 +17,7 @@ const password: string = process.env.UNIPASSWORD;
 const events = [];
 
 async function scrapeCalendar() {
-  const browser = await puppeteer.launch({ executablePath: "/usr/bin/google-chrome", devtools: true});
+  const browser = await puppeteer.launch();
   console.log("Booted the browser")
   const page = await browser.newPage();
   const navigationPromise = page.waitForNavigation({
