@@ -3,6 +3,9 @@ import * as cheerio from "cheerio";
 import html from "./test.js";
 import * as ics from "ics";
 import { writeFileSync } from "fs";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 function encode_utf8(s) {
   return unescape(encodeURIComponent(s));
