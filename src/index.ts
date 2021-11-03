@@ -3,9 +3,6 @@ import * as cheerio from "cheerio";
 import html from "./test.js";
 import * as ics from "ics";
 import { writeFileSync } from "fs";
-import dotenv from 'dotenv'
-
-dotenv.config();
 
 function encode_utf8(s) {
   return unescape(encodeURIComponent(s));
@@ -71,7 +68,6 @@ async function scrapeCalendar() {
     xmlMode: true,
     decodeEntities: true,
   });
-  console.log($('div[name="detailDiv"]').length);
   const days = [];
   $("thead .days")
     .children('[scope="col"]')
@@ -87,7 +83,6 @@ async function scrapeCalendar() {
       days.push(date + dateYear);
     });
   $('div[name="detailDiv"]').each((i, el) => {
-    console.log($(el).parent().parent().index());
     let indexDay = $(el).parent().parent().index() - 1;
     let [day, month, year] = days[indexDay].split("-");
     let [hours, minutes] = $(el)
@@ -96,17 +91,39 @@ async function scrapeCalendar() {
       .siblings(".time")
       .text()
       .split("h");
-    let startDateTime = new Date(
-      year,
-      parseInt(month) - 1,
-      parseInt(day) + 1,
-      parseInt(hours) + 1,
-      parseInt(minutes)
-    );
-    let diff = parseInt($(el).parent().parent().attr("rowspan")) * 30;
-    let endDateTime = new Date(startDateTime.getTime() + diff * 60000);
+    let durationMinutes =
+      parseInt($(el).parent().parent().attr("rowspan")) * 30;
+    let [title, location] = $(el)
+      .html()
+      .replace(/\n/g, "")
+      .replace("</br>", "")
+      .split("<br>");
+    title = encode_utf8(title);
+    location = encode_utf8(location);
+
+    let event = {
+      title: title,
+      location: location,
+      startInputType: "utc",
+      endInputType: "utc",
+      start: [
+        parseInt(year),
+        parseInt(month),
+        parseInt(day),
+        parseInt(hours),
+        parseInt(minutes),
+      ],
+      duration: { minutes: durationMinutes },
+    };
+    events.push(event);
   });
 
-  // console.log($.html());
-  //console.log($('.newtable').html())
+  const { error, value } = ics.createEvents(events);
+
+  if (error) {
+    console.log(error);
+    return;
+  }
+
+  writeFileSync("./output/schedule.ics", value);
 })();
