@@ -1,26 +1,112 @@
 import puppeteer from "puppeteer";
+import * as cheerio from "cheerio";
+import html from "./test.js";
+import * as ics from "ics";
+import { writeFileSync } from "fs";
+import dotenv from 'dotenv'
 
-const url =
-  "https://netpa.novasbe.pt/netpa/page?stage=difhomestage";
+dotenv.config();
+
+function encode_utf8(s) {
+  return unescape(encodeURIComponent(s));
+}
+
+const url = "https://netpa.novasbe.pt/netpa/page?stage=difhomestage";
+
+const email: string = process.env.UNIEMAIL;
+const password: string = process.env.UNIPASSWORD;
+const events = [];
+let content;
 
 async function scrapeCalendar() {
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
+  const navigationPromise = page.waitForNavigation({
+    waitUntil: ["networkidle2"],
+  });
+
   await page.setViewport({
     width: 1920,
     height: 1080,
     deviceScaleFactor: 1,
   });
   await page.goto(url);
-  await page.click('.toplogout')
+  await page.click(".toplogout");
 
-  await page.waitForSelector('[name="loginfmt"]')
-  await page.type('[name="loginfmt"]', process.env.MSLIVE_USER)
-  await page.click('[type="submit"]')
+  await page.waitForSelector('[name="loginfmt"]');
+  await page.type('[name="loginfmt"]', email);
+  await page.click('[type="submit"]');
 
+  await navigationPromise;
+  // we need to use waitForResponse because we are dealing with AJAX - no page navigation
+  await page.waitForResponse((response) => response.status() === 200);
+  await page.waitForSelector('input[type="password"]', { visible: true });
+  await page.type('input[type="password"]', password);
+  await page.click('input[type="submit"]');
+  await page.keyboard.press("Enter");
 
-  await page.screenshot({path: './screenshots/test.png'})
+  await navigationPromise;
+
+  await page.waitForSelector('[type="submit"]', { visible: true });
+  await page.click('[type="submit"]');
+
+  await navigationPromise;
+
+  //Completed Login
+
+  await page.waitForSelector(".perfilAreaBoxPhoto");
+  await page.click('a[title="Schedules"][tabindex="8"]');
+  await page.waitForSelector("#info");
+
+  content = await page.content();
+
+  await page.screenshot({ path: "./screenshots/test.png" });
   await browser.close();
 }
+(async () => {
+  //  await scrapeCalendar();
 
-scrapeCalendar();
+  const $ = cheerio.load(html, {
+    normalizeWhitespace: false,
+    xmlMode: true,
+    decodeEntities: true,
+  });
+  console.log($('div[name="detailDiv"]').length);
+  const days = [];
+  $("thead .days")
+    .children('[scope="col"]')
+    .each((i, el) => {
+      let date = $(el).text().slice(4);
+      let dateYear;
+      if (date.includes("-11") || date.includes("-12")) {
+        dateYear = "-2021";
+      } else {
+        dateYear = "-2022";
+      }
+
+      days.push(date + dateYear);
+    });
+  $('div[name="detailDiv"]').each((i, el) => {
+    console.log($(el).parent().parent().index());
+    let indexDay = $(el).parent().parent().index() - 1;
+    let [day, month, year] = days[indexDay].split("-");
+    let [hours, minutes] = $(el)
+      .parent()
+      .parent()
+      .siblings(".time")
+      .text()
+      .split("h");
+    let startDateTime = new Date(
+      year,
+      parseInt(month) - 1,
+      parseInt(day) + 1,
+      parseInt(hours) + 1,
+      parseInt(minutes)
+    );
+    let diff = parseInt($(el).parent().parent().attr("rowspan")) * 30;
+    let endDateTime = new Date(startDateTime.getTime() + diff * 60000);
+  });
+
+  // console.log($.html());
+  //console.log($('.newtable').html())
+})();
