@@ -3,6 +3,8 @@ node_modules/
 
 # Screenshots
 screenshots/
+
+output/
 # Dist
 dist/
 

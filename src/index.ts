@@ -1,6 +1,5 @@
 import puppeteer from "puppeteer";
 import * as cheerio from "cheerio";
-import html from "./test.js";
 import * as ics from "ics";
 import { writeFileSync } from "fs";
 import dotenv from "dotenv";
@@ -12,14 +11,14 @@ function encode_utf8(s) {
 }
 
 const url = "https://netpa.novasbe.pt/netpa/page?stage=difhomestage";
-
+const weeks = parseInt(process.env.WEEKS);
 const email: string = process.env.UNIEMAIL;
 const password: string = process.env.UNIPASSWORD;
 const events = [];
-let content;
 
 async function scrapeCalendar() {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({ executablePath: "/usr/bin/google-chrome", devtools: true});
+  console.log("Booted the browser")
   const page = await browser.newPage();
   const navigationPromise = page.waitForNavigation({
     waitUntil: ["networkidle2"],
@@ -32,6 +31,8 @@ async function scrapeCalendar() {
   });
   await page.goto(url);
   await page.click(".toplogout");
+
+  console.log('Logging in');
 
   await page.waitForSelector('[name="loginfmt"]');
   await page.type('[name="loginfmt"]', email);
@@ -53,20 +54,30 @@ async function scrapeCalendar() {
   await navigationPromise;
 
   //Completed Login
+  console.log(`✨ Logged in succesfully`);
 
   await page.waitForSelector(".perfilAreaBoxPhoto");
   await page.click('a[title="Schedules"][tabindex="8"]');
   await page.waitForSelector("#info");
+  console.log("Loaded schedule page")
 
-  content = await page.content();
+  await parseEvents(await page.content());
+  console.log(`✨ Parsed first page succesfully`);
+
+
+  for (let index = 0; index <= weeks; index++) {
+    await page.click(".semanaseguinte a");
+    await page.waitForSelector("#info");
+    await parseEvents(await page.content());
+    console.log(`✨ Parsed page ${index} succesfully`);
+  }
 
   await page.screenshot({ path: "./screenshots/test.png" });
   await browser.close();
 }
-(async () => {
-  //  await scrapeCalendar();
 
-  const $ = cheerio.load(html, {
+const parseEvents = async (content) => {
+  const $ = cheerio.load(content, {
     normalizeWhitespace: false,
     xmlMode: true,
     decodeEntities: true,
@@ -120,13 +131,17 @@ async function scrapeCalendar() {
     };
     events.push(event);
   });
+};
 
+(async () => {
+  await scrapeCalendar();
   const { error, value } = ics.createEvents(events);
 
   if (error) {
     console.log(error);
     return;
   }
-
+  console.log("Writing file")
   writeFileSync("./output/schedule.ics", value);
+  console.log("All done")
 })();
