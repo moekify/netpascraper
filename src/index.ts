@@ -47,6 +47,8 @@ async function scrapeCalendar() {
   await page.keyboard.press("Enter");
 
   await navigationPromise;
+  // we need to use waitForResponse because we are dealing with AJAX - no page navigation
+  await page.waitForResponse((response) => response.status() === 200);
 
   await page.waitForSelector('[type="submit"]', { visible: true });
   await page.click('[type="submit"]');
