@@ -25,8 +25,8 @@ async function scrapeCalendar() {
   });
 
   await page.setViewport({
-    width: 1920,
-    height: 1080,
+    width: 1200,
+    height: 800,
     deviceScaleFactor: 1,
   });
   await page.goto(url);
@@ -56,8 +56,8 @@ async function scrapeCalendar() {
   //Completed Login
   console.log(`✨ Logged in succesfully`);
 
-  await page.waitForSelector(".perfilAreaBoxPhoto");
-  await page.click('a[title="Schedules"][tabindex="8"]');
+  await page.waitForSelector('#perfilArea')
+  await page.click('a[title="Schedules"][tabindex="11"]');
   await page.waitForSelector("#info");
   console.log("Loaded schedule page")
 
@@ -72,7 +72,6 @@ async function scrapeCalendar() {
     console.log(`✨ Parsed page ${index} succesfully`);
   }
 
-  await page.screenshot({ path: "./screenshots/test.png" });
   await browser.close();
 }
 
